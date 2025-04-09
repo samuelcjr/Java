@@ -33,6 +33,4 @@ public class NotaPRController {
         return notaPRService.usuarioCadastro02(req.getUrlEmail());
     }
 
-    //teste
-
 }
