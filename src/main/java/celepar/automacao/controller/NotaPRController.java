@@ -15,10 +15,9 @@ import celepar.automacao.service.NotaPRService;
 @RequestMapping("/notapr")
 public class NotaPRController {
 
-    
     private NotaPRService notaPRService;
 
-    @Autowired  
+    @Autowired
     public NotaPRController(NotaPRService notaPRService) {
         this.notaPRService = notaPRService;
     }
@@ -32,6 +31,5 @@ public class NotaPRController {
     public String usuarioCadastro02(@RequestBody UrlEmailDTO req) {
         return notaPRService.usuarioCadastro02(req.getUrlEmail());
     }
- 
 
 }

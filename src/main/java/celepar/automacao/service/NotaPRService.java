@@ -44,8 +44,6 @@ public class NotaPRService {
 
     public String usuarioCadastro(String cpf) {
 
-        //teste Ruy
-
         cpf = StringUtil.formataCPF(cpf);
 
         // Inicia o cadastro do usuário
@@ -78,14 +76,14 @@ public class NotaPRService {
             FileUtils.copyFile(captchaImage, destino);
 
             // Aumenta a resolução da imagem
-             BufferedImage originalImage = ImageIO.read(new File("captcha.png"));
+            BufferedImage originalImage = ImageIO.read(new File("captcha.png"));
             int width = originalImage.getWidth();
             int height = originalImage.getHeight();
             BufferedImage resizedImage = new BufferedImage(width * 2, height * 2, originalImage.getType());
             Graphics2D g = resizedImage.createGraphics();
             g.drawImage(originalImage, 0, 0, width * 2, height * 2, null);
             g.dispose();
-            ImageIO.write(resizedImage, "png", new File("captcha_resized.png")); 
+            ImageIO.write(resizedImage, "png", new File("captcha_resized.png"));
 
         } catch (Exception e) {
             e.printStackTrace();
