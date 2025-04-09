@@ -44,7 +44,7 @@ public class NotaPRService {
 
     public String usuarioCadastro(String cpf) {
 
-        //teste 2
+        //teste
 
         cpf = StringUtil.formataCPF(cpf);
 
