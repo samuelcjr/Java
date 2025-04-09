@@ -32,7 +32,6 @@ public class NotaPRController {
     public String usuarioCadastro02(@RequestBody UrlEmailDTO req) {
         return notaPRService.usuarioCadastro02(req.getUrlEmail());
     }
-
-    //teste2 
+ 
 
 }
