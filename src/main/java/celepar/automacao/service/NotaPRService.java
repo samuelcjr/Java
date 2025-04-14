@@ -1,10 +1,6 @@
 package celepar.automacao.service;
 
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
 import java.io.File;
-
-import javax.imageio.ImageIO;
 
 import org.apache.commons.io.FileUtils;
 import org.openqa.selenium.By;
@@ -26,97 +22,91 @@ import celepar.automacao.util.StringUtil;
 @Service
 public class NotaPRService {
 
-    Config config = new Config();
-    CaptchaUtil captchaUtil = new CaptchaUtil();
+	Config config = new Config();
+	CaptchaUtil captchaUtil = new CaptchaUtil();
 
-    private NotaPRRepository notaPRRepository;
-    private AuthService authService;
-    private ConsultaService consultaService;
+	private NotaPRRepository notaPRRepository;
+	private AuthService authService;
+	private ConsultaService consultaService;
+	public static WebDriver driver;
 
-    @Autowired
-    public NotaPRService(NotaPRRepository notaPRRepository, AuthService authService, ConsultaService consultaService) {
-        this.notaPRRepository = notaPRRepository;
-        this.authService = authService;
-        this.consultaService = consultaService;
-    }
+	@Autowired
+	public NotaPRService(NotaPRRepository notaPRRepository, AuthService authService, ConsultaService consultaService) {
+		this.notaPRRepository = notaPRRepository;
+		this.authService = authService;
+		this.consultaService = consultaService;
+	}
 
-    public static WebDriver driver;
+	public String usuarioCadastro(String cpf) {
 
-    public String usuarioCadastro(String cpf) {
+		cpf = StringUtil.formataCPF(cpf);
 
-        cpf = StringUtil.formataCPF(cpf);
+		// Inicia o cadastro do usuário
+		config.abrirBrowser(true, driver);
 
-        // Inicia o cadastro do usuário
-        config.abrirBrowser(true, driver);
+		// Acessa a URL do sistema
+		driver.get("http://wfly8hml01.sefa.parana/nfprweb/publico/CadastroConsumidor");
 
-        // Acessa a URL do sistema
-        driver.get("http://wfly8hml01.sefa.parana/nfprweb/publico/CadastroConsumidor");
+		// Preenche incicialmente o CPF
+		driver.findElement(By.id("CPF")).sendKeys(cpf);
 
-        // Preenche incicialmente o CPF
-        driver.findElement(By.id("CPF")).sendKeys(cpf);
+		// Serviço para buscar Data de Nascimento, Nome Completo, Nome da Mãe e CEP
+		// 1 - Gerar o token
+		AuthResponseDTO authResponseDTO = authService.getToken();
 
-        // Serviço para buscar Data de Nascimento, Nome Completo, Nome da Mãe e CEP
-        // 1 - Gerar o token
-        AuthResponseDTO authResponseDTO = authService.getToken();
+		// 2 - Com o token obtido, realizar a chamada para o serviço de consulta
+		ConsultaPFDTO consultaPFDTO = consultaService.consultarDadosPF(cpf, authResponseDTO);
 
-        // 2 - Com o token obtido, realizar a chamada para o serviço de consulta
-        ConsultaPFDTO consultaPFDTO = consultaService.consultarDadosPF(cpf, authResponseDTO);
+		driver.findElement(By.id("dtNascimento")).sendKeys(DataUtil.transformarData(consultaPFDTO.getDtNasc()));
+		driver.findElement(By.id("nmUsuario")).sendKeys(consultaPFDTO.getNomeContribuinte());
+		driver.findElement(By.id("nmMae")).sendKeys(consultaPFDTO.getNomeMae());
+		driver.findElement(By.id("CEPLogradouro")).sendKeys(consultaPFDTO.getCep());
+		driver.findElement(By.id("email")).sendKeys("samuelcjr71@gmail.com");
+		driver.findElement(By.id("confirmeEmail")).sendKeys("samuelcjr71@gmail.com");
 
-        driver.findElement(By.id("dtNascimento")).sendKeys(DataUtil.transformarData(consultaPFDTO.getDtNasc()));
-        driver.findElement(By.id("nmUsuario")).sendKeys(consultaPFDTO.getNomeContribuinte());
-        driver.findElement(By.id("nmMae")).sendKeys(consultaPFDTO.getNomeMae());
-        driver.findElement(By.id("CEPLogradouro")).sendKeys(consultaPFDTO.getCep());
-        driver.findElement(By.id("email")).sendKeys("samuelcjr71@gmail.com");
-        driver.findElement(By.id("confirmeEmail")).sendKeys("samuelcjr71@gmail.com");
+		// Captura do CAPTCHA
+		try {
+			// Captura a imagem do CAPTCHA
+			File captchaImage = driver.findElement(By.id("imagemCaptcha")).getScreenshotAs(OutputType.FILE);
+			File destino = new File("captcha.png");
+			FileUtils.copyFile(captchaImage, destino);
 
-        // Captura do Captcha
-        try {
-            File captchaImage = driver.findElement(By.id("imagemCaptcha")).getScreenshotAs(OutputType.FILE);
-            File destino = new File("captcha.png");
-            FileUtils.copyFile(captchaImage, destino);
+			// Resolve o CAPTCHA usando Tesseract
+			CaptchaUtil captchaUtil = new CaptchaUtil();
+			String captchaTexto = captchaUtil.resolverCaptchaComTesseract("captcha.png");
+			// OCR.testarOCR();
+			// OCR.melhoriaImagem01();
 
-            // Aumenta a resolução da imagem
-            BufferedImage originalImage = ImageIO.read(new File("captcha.png"));
-            int width = originalImage.getWidth();
-            int height = originalImage.getHeight();
-            BufferedImage resizedImage = new BufferedImage(width * 2, height * 2, originalImage.getType());
-            Graphics2D g = resizedImage.createGraphics();
-            g.drawImage(originalImage, 0, 0, width * 2, height * 2, null);
-            g.dispose();
-            ImageIO.write(resizedImage, "png", new File("captcha_resized.png"));
+			// Preenche o campo do CAPTCHA com o texto retornado
+			System.out.println("Texto do CAPTCHA: " + captchaTexto);
+			driver.findElement(By.id("imagemSeguranca")).sendKeys(captchaTexto);
 
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+		} catch (Exception e) {
+			e.printStackTrace();
+			return "Erro ao processar o CAPTCHA.";
+		}
 
-        // Resolve o captcha com OCR
+		driver.manage().window().maximize();
 
-        String captchaTexto = captchaUtil.resolverCaptchaComOCR("captcha_resized.png");
-        System.out.println("Texto do captcha: " + captchaTexto);
-        driver.findElement(By.id("imagemSeguranca")).sendKeys(captchaTexto);
+		return "CPF: " + cpf + " do passo 01 realizado com sucesso!";
 
-        driver.manage().window().maximize();
+	}
 
-        return "CPF: " + cpf + " do passo 01 realizado com sucesso!";
+	public String usuarioCadastro02(String urlEmail) {
 
-    }
+		// Continuação do cadastro do usuário
+		config.abrirBrowser(false, driver);
 
-    public String usuarioCadastro02(String urlEmail) {
+		driver.get(urlEmail);
+		driver.findElement(By.id("senha")).sendKeys("teste1234");
+		driver.findElement(By.id("senhaC")).sendKeys("teste1234");
+		driver.findElement(By.cssSelector(".button")).click();
 
-        // Continuação do cadastro do usuário
-        config.abrirBrowser(false, driver);
+		// Atualiza o email na base de dados
+		notaPRRepository.atualizarEmail("samuelcjr71@gmail.com", "samuelcjr71_" + DataUtil.obterDataAtualFormatada() + "@gmail.com");
 
-        driver.get(urlEmail);
-        driver.findElement(By.id("senha")).sendKeys("teste1234");
-        driver.findElement(By.id("senhaC")).sendKeys("teste1234");
-        driver.findElement(By.cssSelector(".button")).click();
+		return "Passo 02 realizado com sucesso!";
 
-        // Atualiza o email na base de dados
-        notaPRRepository.atualizarEmail("samuelcjr71@gmail.com",
-                "samuelcjr71_" + DataUtil.obterDataAtualFormatada() + "@gmail.com");
-
-        return "Passo 02 realizado com sucesso!";
-
-    }
+	}
 
 }
